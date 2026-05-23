@@ -27,8 +27,32 @@
                         <option value="">Select Board</option>
                     </select>
                 </div>
+                <div class="search-box">
+                    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="searchInput" class="input search-input" placeholder="Search tasks...">
+                </div>
+                <div class="filters">
+                    <select id="filterPriority" class="select filter-select">
+                        <option value="">All Priority</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
             </div>
             <div class="header-right">
+                <button id="themeToggle" class="btn btn-icon btn-ghost" title="Toggle theme">
+                    <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
+                <button id="duplicateBoardBtn" class="btn btn-icon btn-ghost" title="Duplicate board" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                </button>
                 <button id="addColumnBtn" class="btn btn-secondary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -40,6 +64,12 @@
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                     New Board
+                </button>
+                <button id="deleteBoardBtn" class="btn btn-danger" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Delete Board
                 </button>
             </div>
         </header>
@@ -185,6 +215,17 @@
                 <button type="button" class="btn btn-secondary" id="cancelDelete">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
             </div>
+        </div>
+    </div>
+
+    <div id="shortcutsHelp" class="shortcuts-help" style="display:none;">
+        <div class="shortcuts-help-content">
+            <h4>Keyboard Shortcuts</h4>
+            <div class="shortcut-row"><kbd>n</kbd> <span>New Board</span></div>
+            <div class="shortcut-row"><kbd>c</kbd> <span>Add Column</span></div>
+            <div class="shortcut-row"><kbd>/</kbd> <span>Search tasks</span></div>
+            <div class="shortcut-row"><kbd>?</kbd> <span>Toggle this help</span></div>
+            <div class="shortcut-row"><kbd>Esc</kbd> <span>Close modals</span></div>
         </div>
     </div>
 

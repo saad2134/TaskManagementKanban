@@ -39,6 +39,9 @@ try {
         case 'move-task':
             handleMoveTask($db, $method);
             break;
+        case 'copy-board':
+            handleCopyBoard($db, $method);
+            break;
         default:
             jsonResponse(['error' => 'Endpoint not found'], 404);
     }
@@ -179,5 +182,57 @@ function handleMoveTask($db, $method) {
     $stmt->execute([$data['column_id'], $data['position'], $data['task_id']]);
     
     jsonResponse(['success' => true]);
+}
+
+function handleCopyBoard($db, $method) {
+    if ($method !== 'POST') {
+        jsonResponse(['error' => 'Method not allowed'], 405);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $boardId = $data['board_id'];
+    
+    $stmt = $db->prepare("SELECT * FROM boards WHERE id = ?");
+    $stmt->execute([$boardId]);
+    $board = $stmt->fetch();
+    if (!$board) {
+        jsonResponse(['error' => 'Board not found'], 404);
+    }
+    
+    $stmt = $db->prepare("INSERT INTO boards (name, description, color, position) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$board['name'] . ' (Copy)', $board['description'], $board['color'], $board['position']]);
+    $newBoardId = $db->lastInsertId();
+    
+    $stmt = $db->prepare("SELECT * FROM columns WHERE board_id = ? ORDER BY position ASC");
+    $stmt->execute([$boardId]);
+    $columns = $stmt->fetchAll();
+    
+    $colIdMap = [];
+    foreach ($columns as $col) {
+        $stmt = $db->prepare("INSERT INTO columns (board_id, name, position) VALUES (?, ?, ?)");
+        $stmt->execute([$newBoardId, $col['name'], $col['position']]);
+        $colIdMap[$col['id']] = $db->lastInsertId();
+    }
+    
+    foreach ($columns as $col) {
+        $stmt = $db->prepare("SELECT * FROM tasks WHERE column_id = ? ORDER BY position ASC");
+        $stmt->execute([$col['id']]);
+        $tasks = $stmt->fetchAll();
+        foreach ($tasks as $task) {
+            $stmt = $db->prepare("INSERT INTO tasks (column_id, title, description, priority, due_date, position) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$colIdMap[$col['id']], $task['title'], $task['description'], $task['priority'], $task['due_date'], $task['position']]);
+            $newTaskId = $db->lastInsertId();
+            
+            $stmt2 = $db->prepare("SELECT label_id FROM task_labels WHERE task_id = ?");
+            $stmt2->execute([$task['id']]);
+            $labelIds = $stmt2->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($labelIds as $labelId) {
+                $stmt3 = $db->prepare("INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)");
+                $stmt3->execute([$newTaskId, $labelId]);
+            }
+        }
+    }
+    
+    jsonResponse(['id' => $newBoardId], 201);
 }
 ?>

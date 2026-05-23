@@ -5,11 +5,15 @@ let tasks = {};
 let draggedTask = null;
 let dragPreview = null;
 let deleteCallback = null;
+let searchTerm = '';
+let filterPriority = '';
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
     setupEventListeners();
+    setupTheme();
+    setupKeyboardShortcuts();
     await loadBoards();
 }
 
@@ -17,6 +21,11 @@ function setupEventListeners() {
     document.getElementById('boardSelect').addEventListener('change', handleBoardChange);
     document.getElementById('addColumnBtn').addEventListener('click', () => openColumnModal());
     document.getElementById('addBoardBtn').addEventListener('click', () => openBoardModal());
+    document.getElementById('deleteBoardBtn').addEventListener('click', deleteBoard);
+    document.getElementById('duplicateBoardBtn').addEventListener('click', duplicateBoard);
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('searchInput').addEventListener('input', handleSearchInput);
+    document.getElementById('filterPriority').addEventListener('change', handleFilterChange);
     
     document.getElementById('closeModal').addEventListener('click', closeModal);
     document.getElementById('closeColumnModal').addEventListener('click', closeColumnModal);
@@ -57,7 +66,25 @@ async function loadBoards() {
         });
         if (boards.length > 0) {
             select.value = boards[0].id;
+            document.getElementById('deleteBoardBtn').style.display = 'inline-flex';
+            document.getElementById('duplicateBoardBtn').style.display = 'inline-flex';
             await loadBoard(boards[0].id);
+        } else {
+            document.getElementById('deleteBoardBtn').style.display = 'none';
+            document.getElementById('duplicateBoardBtn').style.display = 'none';
+            const container = document.getElementById('columnsContainer');
+            container.innerHTML = `
+                <div class="empty-state" style="width:100%;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    <p>No boards yet. Create your first board!</p>
+                    <button class="btn btn-primary" onclick="openBoardModal()">Create Board</button>
+                </div>
+            `;
         }
     } catch (err) {
         showToast('Failed to load boards', 'error');
@@ -66,6 +93,12 @@ async function loadBoards() {
 
 async function handleBoardChange(e) {
     const boardId = e.target.value;
+    document.getElementById('deleteBoardBtn').style.display = boardId ? 'inline-flex' : 'none';
+    document.getElementById('duplicateBoardBtn').style.display = boardId ? 'inline-flex' : 'none';
+    searchTerm = '';
+    filterPriority = '';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterPriority').value = '';
     if (boardId) await loadBoard(boardId);
 }
 
@@ -107,18 +140,34 @@ function renderColumns() {
     const container = document.getElementById('columnsContainer');
     container.innerHTML = '';
     
+    if (columns.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="width:100%;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                <p>This board is empty. Add your first column!</p>
+                <button class="btn btn-primary" onclick="openColumnModal()">Add Column</button>
+            </div>
+        `;
+        return;
+    }
+    
+    const displayTasks = getFilteredTasks();
+    
     columns.forEach(col => {
-        const colEl = createColumnElement(col);
+        const colEl = createColumnElement(col, displayTasks[col.id] || []);
         container.appendChild(colEl);
     });
 }
 
-function createColumnElement(col) {
+function createColumnElement(col, colTasks) {
     const column = document.createElement('div');
     column.className = 'column';
     column.dataset.columnId = col.id;
-    
-    const colTasks = tasks[col.id] || [];
     
     column.innerHTML = `
         <div class="column-header">
@@ -159,9 +208,17 @@ function createColumnElement(col) {
     tasksList.addEventListener('dragleave', handleDragLeave);
     tasksList.addEventListener('drop', handleDrop);
     
-    (tasks[col.id] || []).forEach(task => {
-        tasksList.appendChild(createTaskCard(task));
-    });
+    if (colTasks.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'empty-state';
+        emptyMsg.style.padding = '1rem';
+        emptyMsg.innerHTML = '<p style="font-size:0.75rem;margin:0;">' + (searchTerm || filterPriority ? 'No tasks match your filters' : 'No tasks in this column') + '</p>';
+        tasksList.appendChild(emptyMsg);
+    } else {
+        colTasks.forEach(task => {
+            tasksList.appendChild(createTaskCard(task));
+        });
+    }
     
     return column;
 }
@@ -583,6 +640,124 @@ async function handleBoardSubmit(e) {
     } catch (err) {
         showToast('Failed to save board', 'error');
     }
+}
+
+async function deleteBoard() {
+    const boardId = currentBoard;
+    if (!boardId) return;
+    deleteCallback = async () => {
+        try {
+            await fetch(`${API_BASE}/boards`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: boardId })
+            });
+            showToast('Board deleted successfully', 'success');
+            await loadBoards();
+        } catch (err) {
+            showToast('Failed to delete board', 'error');
+        }
+    };
+    const boardName = document.querySelector(`#boardSelect option[value="${boardId}"]`)?.textContent || 'this board';
+    document.getElementById('deleteMessage').textContent = `Are you sure you want to delete "${boardName}" and all its columns and tasks?`;
+    document.getElementById('deleteModal').classList.add('active');
+}
+
+function getFilteredTasks() {
+    if (!searchTerm && !filterPriority) return tasks;
+    const filtered = {};
+    for (const colId in tasks) {
+        filtered[colId] = tasks[colId].filter(task => {
+            const matchSearch = !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchPriority = !filterPriority || task.priority === filterPriority;
+            return matchSearch && matchPriority;
+        });
+    }
+    return filtered;
+}
+
+function handleSearchInput(e) {
+    searchTerm = e.target.value;
+    renderColumns();
+}
+
+function handleFilterChange(e) {
+    filterPriority = e.target.value;
+    renderColumns();
+}
+
+function setupTheme() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        updateThemeIcon(true);
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeIcon(isDark);
+}
+
+function updateThemeIcon(isDark) {
+    const icon = document.getElementById('themeIcon');
+    if (isDark) {
+        icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    } else {
+        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    }
+}
+
+async function duplicateBoard() {
+    const boardId = currentBoard;
+    if (!boardId) return;
+    try {
+        const res = await fetch(`${API_BASE}/copy-board`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ board_id: boardId })
+        });
+        if (!res.ok) throw new Error('Failed to duplicate board');
+        showToast('Board duplicated successfully', 'success');
+        await loadBoards();
+    } catch (err) {
+        showToast('Failed to duplicate board', 'error');
+    }
+}
+
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        
+        switch (e.key) {
+            case 'n':
+            case 'N':
+                e.preventDefault();
+                openBoardModal();
+                break;
+            case 'c':
+            case 'C':
+                if (currentBoard) {
+                    e.preventDefault();
+                    openColumnModal();
+                }
+                break;
+            case '/':
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+                break;
+            case '?':
+                e.preventDefault();
+                const help = document.getElementById('shortcutsHelp');
+                help.style.display = help.style.display === 'none' ? 'block' : 'none';
+                break;
+            case 'Escape':
+                closeAllModals();
+                document.getElementById('shortcutsHelp').style.display = 'none';
+                break;
+        }
+    });
 }
 
 async function confirmDelete() {

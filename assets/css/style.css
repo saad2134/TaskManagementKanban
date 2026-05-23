@@ -653,27 +653,6 @@ body {
     box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 4px hsl(var(--foreground));
 }
 
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
-    color: hsl(var(--muted-foreground));
-}
-
-.empty-state svg {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.empty-state p {
-    font-size: 0.875rem;
-}
-
 .drop-indicator {
     height: 4px;
     background: hsl(var(--primary));
@@ -730,6 +709,152 @@ body {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+}
+
+.search-input {
+    padding-left: 2.25rem !important;
+    width: 200px;
+    transition: width 0.2s;
+}
+
+.search-input:focus {
+    width: 260px;
+}
+
+.filters {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-select {
+    width: auto;
+    min-width: 120px;
+    font-size: 0.8125rem;
+}
+
+.shortcuts-help {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 2000;
+}
+
+.shortcuts-help-content {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    min-width: 200px;
+}
+
+.shortcuts-help-content h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: hsl(var(--foreground));
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.shortcut-row kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    padding: 0.125rem 0.375rem;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+}
+
+.shortcut-row span {
+    flex: 1;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.empty-state svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Dark mode */
+html.dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 238.7 83.5% 66.7%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 238.7 83.5% 66.7%;
+}
+
+html.dark body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+html.dark .app-header {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+}
+
+html.dark .search-input {
+    background: hsl(var(--secondary));
+}
+
+html.dark .toast {
+    border-color: hsl(var(--border));
 }
 
 @media (max-width: 768px) {
