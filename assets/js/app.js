@@ -3,6 +3,7 @@ let currentBoard = null;
 let columns = [];
 let tasks = {};
 let draggedTask = null;
+let draggedColumn = null;
 let dragPreview = null;
 let deleteCallback = null;
 let searchTerm = '';
@@ -162,18 +163,30 @@ function renderColumns() {
         const colEl = createColumnElement(col, displayTasks[col.id] || []);
         container.appendChild(colEl);
     });
+    
+    container.addEventListener('dragover', handleColumnDragOver);
+    container.addEventListener('drop', handleColumnDrop);
 }
 
 function createColumnElement(col, colTasks) {
     const column = document.createElement('div');
     column.className = 'column';
+    column.draggable = true;
     column.dataset.columnId = col.id;
     
     column.innerHTML = `
         <div class="column-header">
-            <div class="column-title">
-                <span>${col.name}</span>
-                <span class="column-count">${colTasks.length}</span>
+            <div class="column-header-drag">
+                <span class="column-drag-handle" title="Drag to reorder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/>
+                        <line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/>
+                    </svg>
+                </span>
+                <div class="column-title">
+                    <span>${col.name}</span>
+                    <span class="column-count">${colTasks.length}</span>
+                </div>
             </div>
             <div class="column-actions">
                 <button class="btn btn-icon btn-ghost" onclick="editColumn(${col.id})" title="Edit">
@@ -207,6 +220,9 @@ function createColumnElement(col, colTasks) {
     tasksList.addEventListener('dragenter', handleDragEnter);
     tasksList.addEventListener('dragleave', handleDragLeave);
     tasksList.addEventListener('drop', handleDrop);
+    
+    column.addEventListener('dragstart', handleColumnDragStart);
+    column.addEventListener('dragend', handleColumnDragEnd);
     
     if (colTasks.length === 0) {
         const emptyMsg = document.createElement('div');
@@ -300,12 +316,13 @@ function createTaskCard(task) {
 }
 
 function handleDragStart(e) {
-    draggedTask = e.target;
-    e.target.classList.add('dragging');
+    draggedTask = e.target.closest('.task-card');
+    if (!draggedTask) return;
+    draggedTask.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+    e.dataTransfer.setData('text/plain', draggedTask.dataset.taskId);
     
-    dragPreview = e.target.cloneNode(true);
+    dragPreview = draggedTask.cloneNode(true);
     dragPreview.className = 'task-card drag-preview';
     dragPreview.style.width = e.target.offsetWidth + 'px';
     document.body.appendChild(dragPreview);
@@ -313,7 +330,8 @@ function handleDragStart(e) {
 }
 
 function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+    const card = e.target.closest('.task-card');
+    if (card) card.classList.remove('dragging');
     if (dragPreview) {
         dragPreview.remove();
         dragPreview = null;
@@ -806,12 +824,11 @@ function escapeHtml(text) {
 }
 
 function showToast(message, type = 'success') {
-    const container = document.createElement('div');
-    container.className = 'toast-container';
-    if (!document.querySelector('.toast-container')) {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
         document.body.appendChild(container);
-    } else {
-        container = document.querySelector('.toast-container');
     }
     
     const toast = document.createElement('div');

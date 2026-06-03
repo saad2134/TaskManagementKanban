@@ -23,7 +23,7 @@ A modern, professional task management application inspired by Trello and built 
 
 - **Frontend**: HTML5, CSS3 (Custom CSS with shadcn-inspired design), Vanilla JavaScript (ES6+)
 - **Backend**: PHP 7.4+ (REST API)
-- **Database**: MySQL 5.7+ with PDO
+- **Database**: SQLite with PDO (auto-created)
 - **Server**: PHP Built-in Server or Apache
 
 ## Project Structure
@@ -38,8 +38,8 @@ TaskManagementKanban/
 │   └── js/
 │       └── app.js         # Application logic & drag-drop
 ├── database/
-│   ├── config.php         # Database configuration
-│   └── schema.sql         # Database schema
+│   ├── config.php         # Database configuration (SQLite auto-create)
+│   └── kanban.sqlite      # SQLite database file (auto-created)
 ├── .htaccess             # Apache URL rewriting rules
 ├── router.php            # PHP built-in server router
 ├── index.php             # Main application entry point
@@ -50,8 +50,7 @@ TaskManagementKanban/
 
 ### Prerequisites
 
-- PHP 7.4 or higher
-- MySQL 5.7 or higher
+- PHP 7.4 or higher (with `pdo_sqlite` extension enabled)
 - A web browser
 
 ### Quick Start with PHP Built-in Server
@@ -66,16 +65,9 @@ TaskManagementKanban/
    php -S localhost:8000 router.php
    ```
 
-3. **Create the database** (in another terminal):
-   ```bash
-   mysql -u root -p
-   ```
-   Then run:
-   ```sql
-   SOURCE database/schema.sql;
-   ```
+3. **Access**: Open `http://localhost:8000` in your browser
 
-4. **Access**: Open `http://localhost:8000` in your browser
+   The SQLite database (`database/kanban.sqlite`) is created automatically on first request.
 
 ### Setup Steps
 
@@ -86,37 +78,23 @@ TaskManagementKanban/
    C:\xampp\htdocs\taskflow\
    ```
 
-2. **Create the database**:
-   - Open phpMyAdmin or MySQL CLI
-   - Create a new database named `task_kanban`
-   - Import the schema file:
-   ```bash
-   mysql -u root -p task_kanban < database/schema.sql
-   ```
-   Or via phpMyAdmin:
-   - Select the database
-   - Go to Import tab
-   - Choose `database/schema.sql`
-   - Click Go
+2. **Database**: No setup needed. SQLite database (`database/kanban.sqlite`) is auto-created on first request.
 
-3. **Configure database connection**:
-   - Edit `database/config.php` with your MySQL credentials:
+3. **Configure database connection** (optional):
+   - Edit `database/config.php` if needed:
    ```php
-   private $host = 'localhost';
-   private $dbname = 'task_kanban';
-   private $username = 'root';      // Your MySQL username
-   private $password = '';          // Your MySQL password
+   private function __construct() {
+       $dbPath = __DIR__ . '/kanban.sqlite';  // Database file path
+       // ...
+   }
    ```
 
 4. **Start the server**:
-   - For XAMPP: Start Apache and MySQL services
-   - For WAMP: Start Apache and MySQL services
-   - For Linux: `sudo systemctl start apache2 mysql`
+   - For Apache: Ensure PHP and mod_rewrite are enabled
    - **OR use PHP built-in server**: `php -S localhost:8000 router.php`
 
 5. **Access the application**:
-   - Open your browser and navigate to: `http://localhost/taskflow/`
-   - Or directly: `http://localhost/taskflow/index.php`
+   - Open your browser and navigate to: `http://localhost:8000`
 
 ## Usage Guide
 
@@ -199,11 +177,9 @@ The application uses 5 tables:
 
 ### Database (database/config.php)
 
+The app uses SQLite with auto-created tables. Database file path:
 ```php
-private $host = 'localhost';      // Database host
-private $dbname = 'task_kanban'; // Database name
-private $username = 'root';      // Database username
-private $password = '';          // Database password
+$dbPath = __DIR__ . '/kanban.sqlite';  // SQLite database file
 ```
 
 ### API Base URL (assets/js/app.js)
@@ -237,77 +213,9 @@ Update this if your API path is different.
 ## Troubleshooting
 
 ### Database Connection Failed
-- Verify MySQL is running
-- Check credentials in `database/config.php`
-- Ensure the database exists
-
-### Alternative: Use SQLite (No MySQL Required!)
-If you don't have MySQL, you can use SQLite. Replace `database/config.php` with:
-
-```php
-<?php
-class Database {
-    private static $instance = null;
-    private $connection;
-    
-    private function __construct() {
-        try {
-            $dbPath = __DIR__ . '/kanban.sqlite';
-            $this->connection = new PDO("sqlite:$dbPath");
-            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->initSQLite();
-        } catch (PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
-            exit;
-        }
-    }
-    
-    private function initSQLite() {
-        $this->connection->exec("
-            CREATE TABLE IF NOT EXISTS boards (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT,
-                color TEXT DEFAULT '#6366f1',
-                position INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS columns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                board_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                position INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
-            );
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                column_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                description TEXT,
-                priority TEXT DEFAULT 'medium',
-                due_date DATE,
-                position INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE
-            );
-        ");
-    }
-    
-    public static function getInstance() {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-    
-    public function getConnection() {
-        return $this->connection;
-    }
-}
-?>
-```
+- Verify PHP has `pdo_sqlite` extension enabled (`php -m | findstr pdo_sqlite`)
+- Check the database directory is writable
+- Delete `database/kanban.sqlite` to reset
 
 ### API Requests Returning 404
 - For PHP built-in server: Use `php -S localhost:8000 router.php` (not just `php -S localhost:8000`)

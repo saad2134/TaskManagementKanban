@@ -39,6 +39,9 @@ try {
         case 'move-task':
             handleMoveTask($db, $method);
             break;
+        case 'move-column':
+            handleMoveColumn($db, $method);
+            break;
         case 'copy-board':
             handleCopyBoard($db, $method);
             break;
@@ -180,6 +183,18 @@ function handleMoveTask($db, $method) {
     $data = json_decode(file_get_contents('php://input'), true);
     $stmt = $db->prepare("UPDATE tasks SET column_id = ?, position = ? WHERE id = ?");
     $stmt->execute([$data['column_id'], $data['position'], $data['task_id']]);
+    
+    jsonResponse(['success' => true]);
+}
+
+function handleMoveColumn($db, $method) {
+    if ($method !== 'POST') {
+        jsonResponse(['error' => 'Method not allowed'], 405);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $stmt = $db->prepare("UPDATE columns SET position = ?, board_id = ? WHERE id = ?");
+    $stmt->execute([$data['position'], $data['board_id'], $data['column_id']]);
     
     jsonResponse(['success' => true]);
 }
